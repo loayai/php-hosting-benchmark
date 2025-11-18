@@ -20,7 +20,7 @@ Just upload the file, and it runs immediately on your existing web hosting serve
 1.  **Download:** Download `bench.php` from this repository.
 2.  **Configure Credentials (MANDATORY):**
     *   Open the file in any text editor.
-    *   Find the configuration block near the top (approx line 25).
+    *   Find the configuration block near the top.
     *   **Change the default password.** The script has a security lock that prevents it from running until this is changed.
 
     ```php
