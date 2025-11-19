@@ -2290,77 +2290,10 @@
             if ($successCount < ($count / 2)) {
                 return 0;
             }
-
-            // Return average time per request (total time / count is throughput-ish, 
-            // but for this benchmark we want the time it took to handle the LOAD)
-            // Actually, for concurrency, we usually measure how long the BATCH took.
-            // But our scoring expects a "time per operation" scale.
-            // If 15 requests took 1.5s total, the effective time per request under load is 0.1s? 
-            // No, that's throughput. 
-            // If the server handles them in parallel, the total time should be close to the time of a single request.
-            // If it handles them sequentially, it will be 15x.
-            // So returning the TOTAL time for the batch is a good metric of concurrency capability.
-            // If perfect parallelism: Total Time ~= Single Request Time
-            // If serial: Total Time ~= 15 * Single Request Time
             
-            // However, to match existing scoring thresholds (0.2 - 2.0s), 
-            // we should probably return the average time per request seen by the client?
-            // No, let's return the Total Batch Time divided by a factor to normalize it to the scoring scale.
-            // Or better, let's just return the average time per request as calculated by totalTime / count?
-            // No, that rewards serial execution (15s / 15 = 1s).
-            
-            // Let's return the TOTAL time for the batch.
-            // Excellent server: 15 requests in 0.2s (parallel) -> Score 10
-            // Poor server: 15 requests in 3.0s (serial) -> Score 1
-            
-            return round($totalTime / $count, 4); // Wait, if we divide by count, we hide the concurrency penalty.
-            
-            // Let's look at the thresholds: 
-            // Modern: [0.05, 0.15, 0.4, 1.0]
-            // Light: [0.2, 0.5, 1.0, 2.0]
-            
-            // If we return average time (Total / 15):
-            // Parallel (0.2s total): 0.2 / 15 = 0.013s -> Excellent
-            // Serial (3.0s total): 3.0 / 15 = 0.2s -> Good? No, that's bad.
-            
-            // So we MUST return the TOTAL time for the batch, or the MAX time of any request.
-            // But the previous JS test calculated "average response time".
-            // JS: avgResponseTime = sum(responseTimes) / count.
-            // If parallel: 15 requests start at T0. All finish at T0+0.2. Avg = 0.2.
-            // If serial: R1 finishes at 0.2, R2 at 0.4 ... R15 at 3.0. Avg = (0.2+3.0)/2 = 1.6.
-            
-            // So Average Response Time is the correct metric.
-            // But curl_multi doesn't easily give individual request times without more parsing.
-            // Approximation: Total Batch Time is roughly the Max Response Time.
-            // If we assume linear distribution for serial (Avg = Max/2) and flat for parallel (Avg = Max),
-            // using Total Batch Time (Max) is a safer, stricter metric.
-            
-            // Let's stick to Average Response Time to be consistent with the previous JS logic.
-            // Ideally we'd parse the response times, but the worker just returns a float time.
-            // We can fetch the content of the responses.
-            
-            // REVISION: Let's just return the Total Batch Time / 2 as a rough approximation of Average Response Time
-            // for mixed workloads, OR just adjust the thresholds.
-            
-            // Actually, let's try to get the content.
-            // The worker returns a float (time taken).
-            // But that's server-side execution time, not response time (queueing time).
-            
-            // Let's simply return the Total Batch Time.
-            // And we will adjust the thresholds in the config to match "Batch of 15 requests".
-            // 15 requests * 0.01s (work) = 0.15s theoretical minimum.
-            // Excellent: < 0.5s for the whole batch.
-            // Poor: > 3.0s for the whole batch.
-            
-            // Wait, I cannot easily change the thresholds just for this one test without confusing the user 
-            // or making the config complex.
-            // The current thresholds are:
-            // Modern: [0.05, 0.15, 0.4, 1.0]
-            // Light: [0.2, 0.5, 1.0, 2.0]
-            
-            // If I return Total Batch Time (e.g. 0.5s), it fits "Average" in Modern and "Good" in Light.
-            // That seems reasonable for a batch of 15.
-            
+            // Return total batch time (not average) to properly measure parallelism
+            // A well-parallelized server completes 15 requests in ~0.2s (parallel)
+            // A serial/throttled server takes 3.0s+ (queued execution)
             return round($totalTime, 4); 
         }
 
