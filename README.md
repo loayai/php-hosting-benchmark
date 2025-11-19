@@ -1,4 +1,4 @@
-# PHP Shared Hosting Benchmark Dashboard
+# PHP Hosting Benchmark Dashboard
 
 A lightweight, single-file PHP dashboard designed specifically to benchmark and monitor Shared Hosting environments where you do not have root access or the ability to install system-level monitoring tools.
 
